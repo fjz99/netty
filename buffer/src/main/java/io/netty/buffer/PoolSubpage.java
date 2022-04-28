@@ -29,7 +29,7 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
     private final int pageShifts;
     private final int runOffset;
     private final int runSize;
-    private final long[] bitmap;
+    private final long[] bitmap;//位示图，表示那些块没有被分配
 
     PoolSubpage<T> prev;
     PoolSubpage<T> next;
@@ -66,6 +66,7 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
             maxNumElems = numAvail = runSize / elemSize;
             nextAvail = 0;
             bitmapLength = maxNumElems >>> 6;
+            //无法整除就多加一个。。
             if ((maxNumElems & 63) != 0) {
                 bitmapLength ++;
             }
@@ -79,18 +80,20 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
 
     /**
      * Returns the bitmap index of the subpage allocation.
+     * 通过bitmap分配一个
      */
     long allocate() {
         if (numAvail == 0 || !doNotDestroy) {
             return -1;
         }
 
-        final int bitmapIdx = getNextAvail();
+        final int bitmapIdx = getNextAvail();//得到下一个可用的
         int q = bitmapIdx >>> 6;
         int r = bitmapIdx & 63;
         assert (bitmap[q] >>> r & 1) == 0;
         bitmap[q] |= 1L << r;
 
+        //没有可用的块了
         if (-- numAvail == 0) {
             removeFromPool();
         }
@@ -199,6 +202,7 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         return -1;
     }
 
+    //bimap刚好在handle的低位
     private long toHandle(int bitmapIdx) {
         int pages = runSize >> pageShifts;
         return (long) runOffset << RUN_OFFSET_SHIFT

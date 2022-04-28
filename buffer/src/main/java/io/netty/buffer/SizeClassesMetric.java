@@ -29,6 +29,7 @@ public interface SizeClassesMetric {
 
     /**
      * Computes size according to sizeIdx.
+     * 从表中查
      *
      * @return size
      */
@@ -36,6 +37,7 @@ public interface SizeClassesMetric {
 
     /**
      * Computes size from lookup table according to pageIdx.
+     * 这个方法只有单测用到了。。
      *
      * @return size which is multiples of pageSize.
      */
@@ -43,6 +45,7 @@ public interface SizeClassesMetric {
 
     /**
      * Computes size according to pageIdx.
+     * 这个方法只有单测用到了。。
      *
      * @return size which is multiples of pageSize
      */
@@ -50,6 +53,8 @@ public interface SizeClassesMetric {
 
     /**
      * Normalizes request size up to the nearest size class.
+     * 将大小规范化为2的k次方,即本来size=10字节，这个会返回具体的size类index，
+     * 这个size类对应16字节，index自然是0，因为这是small page，small page只有特定的几个
      *
      * @param size request size
      *

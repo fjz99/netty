@@ -45,6 +45,7 @@ import static io.netty.buffer.PoolThreadCache.*;
  * <p>
  *   The first size class and spacing are 1 << LOG2_QUANTUM.
  *   Each group has 1 << LOG2_SIZE_CLASS_GROUP of size classes.
+ *   一组有1 << LOG2_SIZE_CLASS_GROUP等于4个大小类
  *
  *   size = 1 << log2Group + nDelta * (1 << log2Delta)
  *
@@ -52,21 +53,23 @@ import static io.netty.buffer.PoolThreadCache.*;
  *   split between group and delta*nDelta.
  *
  *   If pageShift = 13, sizeClasses looks like this:
- *
- *   (index, log2Group, log2Delta, nDelta, isMultiPageSize, isSubPage, log2DeltaLookup)
+ *   delta用于计算组内大小，即大小为
+ *   (1 << log2Group) + (nDelta << log2Delta)
+ *   log2DeltaLookup等于log2Delta或者为no
+ *   (index, log2Group, log2Delta, nDelta, isMultiPageSize, isSubPage, log2DeltaLookup??) 注：大小
  * <p>
- *   ( 0,     4,        4,         0,       no,             yes,        4)
- *   ( 1,     4,        4,         1,       no,             yes,        4)
- *   ( 2,     4,        4,         2,       no,             yes,        4)
- *   ( 3,     4,        4,         3,       no,             yes,        4)
+ *   ( 0,     4,        4,         0,       no,             yes,        4) 16
+ *   ( 1,     4,        4,         1,       no,             yes,        4) 32
+ *   ( 2,     4,        4,         2,       no,             yes,        4) 48
+ *   ( 3,     4,        4,         3,       no,             yes,        4) 64
  * <p>
- *   ( 4,     6,        4,         1,       no,             yes,        4)
- *   ( 5,     6,        4,         2,       no,             yes,        4)
- *   ( 6,     6,        4,         3,       no,             yes,        4)
- *   ( 7,     6,        4,         4,       no,             yes,        4)
+ *   ( 4,     6,        4,         1,       no,             yes,        4) 80
+ *   ( 5,     6,        4,         2,       no,             yes,        4) 96
+ *   ( 6,     6,        4,         3,       no,             yes,        4) 112
+ *   ( 7,     6,        4,         4,       no,             yes,        4) 128
  * <p>
- *   ( 8,     7,        5,         1,       no,             yes,        5)
- *   ( 9,     7,        5,         2,       no,             yes,        5)
+ *   ( 8,     7,        5,         1,       no,             yes,        5) 160
+ *   ( 9,     7,        5,         2,       no,             yes,        5) 192
  *   ( 10,    7,        5,         3,       no,             yes,        5)
  *   ( 11,    7,        5,         4,       no,             yes,        5)
  *   ...
@@ -76,7 +79,7 @@ import static io.netty.buffer.PoolThreadCache.*;
  *   ( 74,    23,       21,        3,       yes,            no,        no)
  *   ( 75,    23,       21,        4,       yes,            no,        no)
  * <p>
- *   ( 76,    24,       22,        1,       yes,            no,        no)
+ *   ( 76,    24,       22,        1,       yes,            no,        no) 2^77=chunk_size
  */
 abstract class SizeClasses implements SizeClassesMetric {
 
@@ -100,19 +103,22 @@ abstract class SizeClasses implements SizeClassesMetric {
     protected final int chunkSize;
     protected final int directMemoryCacheAlignment;
 
-    final int nSizes;
+    final int nSizes;//最大的index为多少
     final int nSubpages;
     final int nPSizes;
     final int lookupMaxSize;
-    final int smallMaxSizeIdx;
+    final int smallMaxSizeIdx;//small最大的index为多少
 
+    //只保存page index2size 的表，略过small内存
     private final int[] pageIdx2sizeTab;
 
     // lookup table for sizeIdx <= smallMaxSizeIdx
-    private final int[] sizeIdx2sizeTab;
+//    但是会全存
+    private final int[] sizeIdx2sizeTab;//对于small类型的id到size的映射，见最前面的注释
 
     // lookup table used for size <= lookupMaxClass
-    // spacing is 1 << LOG2_QUANTUM, so the size of array is lookupMaxClass >> LOG2_QUANTUM
+    // spacing is 1 << LOG2_QUANTUM, so the size of array is lookupMaxClass >> LOG2_QUANTUM;即最小单位是16字节，所以这个存储的为
+    //size - 1 >> LOG2_QUANTUM即为下标，即都是以16字节为单位的
     private final int[] size2idxTab;
 
     protected SizeClasses(int pageSize, int pageShifts, int chunkSize, int directMemoryCacheAlignment) {
@@ -132,10 +138,11 @@ abstract class SizeClasses implements SizeClassesMetric {
 
         //First small group, nDelta start at 0.
         //first size class is 1 << LOG2_QUANTUM
+        //第一个size的值为1 << LOG2_QUANTUM等于16字节
         for (int nDelta = 0; nDelta < ndeltaLimit; nDelta++, nSizes++) {
             short[] sizeClass = newSizeClass(nSizes, log2Group, log2Delta, nDelta, pageShifts);
             sizeClasses[nSizes] = sizeClass;
-            size = sizeOf(sizeClass, directMemoryCacheAlignment);
+            size = sizeOf(sizeClass, directMemoryCacheAlignment);//计算size大小
         }
 
         log2Group += LOG2_SIZE_CLASS_GROUP;
@@ -163,7 +170,7 @@ abstract class SizeClasses implements SizeClassesMetric {
             }
             if (sz[SUBPAGE_IDX] == yes) {
                 nSubpages++;
-                smallMaxSizeIdx = idx;
+                smallMaxSizeIdx = idx;//统计small部分的最大index
             }
             if (sz[LOG2_DELTA_LOOKUP_IDX] != no) {
                 lookupMaxSize = sizeOf(sz, directMemoryCacheAlignment);
@@ -324,7 +331,7 @@ abstract class SizeClasses implements SizeClassesMetric {
 
         size = alignSizeIfNeeded(size, directMemoryCacheAlignment);
 
-        if (size <= lookupMaxSize) {
+        if (size <= lookupMaxSize) {//可以从表中查
             //size-1 / MIN_TINY
             return size2idxTab[size - 1 >> LOG2_QUANTUM];
         }

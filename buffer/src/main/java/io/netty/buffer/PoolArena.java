@@ -71,6 +71,12 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 
+    /**
+     * @param pageSize 页大小，一般8k
+     * @param pageShifts 移动多少页，2的pageShifts次方个
+     * @param chunkSize {@link PoolChunk} 大小
+     * @param cacheAlignment 防止伪共享的填充大小
+     */
     protected PoolArena(PooledByteBufAllocator parent, int pageSize,
           int pageShifts, int chunkSize, int cacheAlignment) {
         super(pageSize, pageShifts, chunkSize, cacheAlignment);

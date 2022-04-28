@@ -139,6 +139,7 @@ final class PoolThreadCache {
         }
     }
 
+    //就是一个log2对数函数而已,因为log2本质在数2进制有几位
     // val > 0
     static int log2(int val) {
         return INTEGER_SIZE_MINUS_ONE - Integer.numberOfLeadingZeros(val);

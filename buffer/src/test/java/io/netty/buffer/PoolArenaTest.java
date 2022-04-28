@@ -26,16 +26,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PoolArenaTest {
 
-    private static final int PAGE_SIZE = 8192;
-    private static final int PAGE_SHIFTS = 11;
+    private static final int PAGE_SIZE = 8192;//一页，8k
+    private static final int PAGE_SHIFTS = 11;//总共多少页
     //chunkSize = pageSize * (2 ^ pageShifts)
-    private static final int CHUNK_SIZE = 16777216;
+    private static final int CHUNK_SIZE = 16777216;//一个PoolChunk
 
     @Test
     public void testNormalizeCapacity() {
         PoolArena<ByteBuffer> arena = new PoolArena.DirectArena(null, PAGE_SIZE, PAGE_SHIFTS, CHUNK_SIZE, 0);
         int[] reqCapacities = {0, 15, 510, 1024, 1023, 1025};
-        int[] expectedResult = {16, 16, 512, 1024, 1024, 1280};
+        int[] expectedResult = {16, 16, 512, 1024, 1024, 1280};//1280
         for (int i = 0; i < reqCapacities.length; i ++) {
             assertEquals(expectedResult[i], arena.sizeIdx2size(arena.size2SizeIdx(reqCapacities[i])));
         }

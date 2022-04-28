@@ -201,7 +201,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
 
         runsAvail = newRunsAvailqueueArray(maxPageIdx);
         runsAvailMap = new LongLongHashMap(-1);
-        subpages = new PoolSubpage[chunkSize >> pageShifts];
+        subpages = new PoolSubpage[chunkSize >> pageShifts];//数组下标即subpage开始的offset，即通过这个来区分subpage，这样就不用map了
 
         //insert initial run, offset = 0, pages = chunkSize / pageSize
         int pages = chunkSize >> pageShifts;
@@ -362,6 +362,8 @@ final class PoolChunk<T> implements PoolChunkMetric {
         final int elemSize = arena.sizeIdx2size(sizeIdx);
 
         //find lowest common multiple of pageSize and elemSize
+        //保证结果是pagesize的整数倍，也是对应的subpage中elemSize（即subpage的规格）的整数倍
+        //然后尽量小
         do {
             runSize += pageSize;
             nElements = runSize / elemSize;
