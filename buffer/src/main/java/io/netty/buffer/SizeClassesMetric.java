@@ -53,8 +53,7 @@ public interface SizeClassesMetric {
 
     /**
      * Normalizes request size up to the nearest size class.
-     * 将大小规范化为2的k次方,即本来size=10字节，这个会返回具体的size类index，
-     * 这个size类对应16字节，index自然是0，因为这是small page，small page只有特定的几个
+     * 注意返回的index包含normal和small
      *
      * @param size request size
      *

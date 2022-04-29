@@ -327,7 +327,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
 
     private long allocateRun(int runSize) {
         int pages = runSize >> pageShifts;
-        int pageIdx = arena.pages2pageIdx(pages);
+        int pageIdx = arena.pages2pageIdx(pages);//注意是pageIndex
 
         synchronized (runsAvail) {
             //find first queue which has at least one big enough run
@@ -581,6 +581,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         assert s.doNotDestroy;
         assert reqCapacity <= s.elemSize : reqCapacity + "<=" + s.elemSize;
 
+        //计算subpage的偏移
         int offset = (runOffset << pageShifts) + bitmapIdx * s.elemSize;
         buf.init(this, nioBuffer, handle, offset, reqCapacity, s.elemSize, threadCache);
     }

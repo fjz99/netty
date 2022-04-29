@@ -63,6 +63,7 @@ final class PoolThreadCache {
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 
+    //small全部会cache，normal也全部cache（但是pagesize整数倍太多了，所以还是借助sizeClass的size index）
     PoolThreadCache(PoolArena<byte[]> heapArena, PoolArena<ByteBuffer> directArena,
                     int smallCacheSize, int normalCacheSize, int maxCachedBufferCapacity,
                     int freeSweepAllocationThreshold) {
@@ -85,6 +86,7 @@ final class PoolThreadCache {
         }
         if (heapArena != null) {
             // Create the caches for the heap allocations
+            //small会thread cache所有
             smallSubPageHeapCaches = createSubPageCaches(
                     smallCacheSize, heapArena.numSmallSubpagePools);
 
@@ -115,6 +117,8 @@ final class PoolThreadCache {
             for (int i = 0; i < cache.length; i++) {
                 // TODO: maybe use cacheSize / cache.length
                 cache[i] = new SubPageMemoryRegionCache<T>(cacheSize);
+                //size指的是队列的长度
+                //队列的个数是small的全部都cache
             }
             return cache;
         } else {
@@ -129,6 +133,7 @@ final class PoolThreadCache {
             int max = Math.min(area.chunkSize, maxCachedBufferCapacity);
             // Create as many normal caches as we support based on how many sizeIdx we have and what the upper
             // bound is that we want to cache in general.
+            // 默认数组的大小是sizeidx上界，但是可以指定cache的最大大小（字节数）
             List<MemoryRegionCache<T>> cache = new ArrayList<MemoryRegionCache<T>>() ;
             for (int idx = area.numSmallSubpagePools; idx < area.nSizes && area.sizeIdx2size(idx) <= max ; idx++) {
                 cache.add(new NormalMemoryRegionCache<T>(cacheSize));
@@ -139,7 +144,7 @@ final class PoolThreadCache {
         }
     }
 
-    //就是一个log2对数函数而已,因为log2本质在数2进制有几位
+    // 就是一个log2对数函数而已,因为log2本质在数2进制有几位
     // val > 0
     static int log2(int val) {
         return INTEGER_SIZE_MINUS_ONE - Integer.numberOfLeadingZeros(val);
@@ -341,7 +346,7 @@ final class PoolThreadCache {
 
         MemoryRegionCache(int size, SizeClass sizeClass) {
             this.size = MathUtil.safeFindNextPositivePowerOfTwo(size);
-            queue = PlatformDependent.newFixedMpscQueue(this.size);
+            queue = PlatformDependent.newFixedMpscQueue(this.size);//定长线程安全的队列
             this.sizeClass = sizeClass;
         }
 
@@ -360,6 +365,8 @@ final class PoolThreadCache {
             boolean queued = queue.offer(entry);
             if (!queued) {
                 // If it was not possible to cache the chunk, immediately recycle the entry
+                // 队列达到长度上限了
+                // 回收到对象池中
                 entry.recycle();
             }
 
@@ -389,6 +396,9 @@ final class PoolThreadCache {
             return free(Integer.MAX_VALUE, finalizer);
         }
 
+        /**
+         * @param max free多少个
+         */
         private int free(int max, boolean finalizer) {
             int numFreed = 0;
             for (; numFreed < max; numFreed++) {
@@ -416,6 +426,9 @@ final class PoolThreadCache {
             }
         }
 
+        /**
+         * 释放Entry对应的Run，归还给对应的PoolChunk
+         */
         @SuppressWarnings({ "unchecked", "rawtypes" })
         private  void freeEntry(Entry entry, boolean finalizer) {
             // Capture entry state before we recycle the entry object.
@@ -448,7 +461,7 @@ final class PoolThreadCache {
                 chunk = null;
                 nioBuffer = null;
                 handle = -1;
-                recyclerHandle.recycle(this);
+                recyclerHandle.recycle(this);//回收到对象池中
             }
         }
 

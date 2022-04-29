@@ -89,6 +89,7 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
             smallSubpagePools[i] = newSubpagePoolHead();
         }
 
+        //注意下面的usage范围有重叠
         q100 = new PoolChunkList<T>(this, null, 100, Integer.MAX_VALUE, chunkSize);
         q075 = new PoolChunkList<T>(this, q100, 75, 100, chunkSize);
         q050 = new PoolChunkList<T>(this, q075, 50, 100, chunkSize);
@@ -100,8 +101,8 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
         q075.prevList(q050);
         q050.prevList(q025);
         q025.prevList(q000);
-        q000.prevList(null);
-        qInit.prevList(qInit);
+        q000.prevList(null);//!!
+        qInit.prevList(qInit);//!!
 
         List<PoolChunkListMetric> metrics = new ArrayList<PoolChunkListMetric>(6);
         metrics.add(qInit);
@@ -231,11 +232,13 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
             deallocationsHuge.increment();
         } else {
             SizeClass sizeClass = sizeClass(handle);
+            //cache成功就直接返回
             if (cache != null && cache.add(this, chunk, nioBuffer, handle, normCapacity, sizeClass)) {
                 // cached so not free it.
                 return;
             }
 
+            //如果cache不成功就free它，后面chunk会复用这个内存
             freeChunk(chunk, handle, normCapacity, sizeClass, nioBuffer, false);
         }
     }
@@ -264,6 +267,7 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
             }
             destroyChunk = !chunk.parent.free(chunk, handle, normCapacity, nioBuffer);
         }
+        //当在list中因为free向前移动但是为null的时候，会直接destory
         if (destroyChunk) {
             // destroyChunk not need to be called while holding the synchronized lock.
             destroyChunk(chunk);
@@ -274,6 +278,11 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
         return smallSubpagePools[sizeIdx];
     }
 
+    /**
+     * 可用于扩容
+     * 类似于arrayList，这个是先分配新大小的空间，然后再memory copy过去
+     * @param freeOldMemory 决定是否free旧空间
+     */
     void reallocate(PooledByteBuf<T> buf, int newCapacity, boolean freeOldMemory) {
         assert newCapacity >= 0 && newCapacity <= buf.maxCapacity();
 
