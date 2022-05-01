@@ -145,6 +145,7 @@ final class PoolChunkList<T> implements PoolChunkListMetric {
      */
     private boolean move0(PoolChunk<T> chunk) {
         if (prevList == null) {
+            // 因为有一个list的范围是1-，所以当chunk完全空了之后，就无法存放到任何list中了，此时就释放这个chunk
             // There is no previous PoolChunkList so return false which result in having the PoolChunk destroyed and
             // all memory associated with the PoolChunk will be released.
             assert chunk.usage() == 0;

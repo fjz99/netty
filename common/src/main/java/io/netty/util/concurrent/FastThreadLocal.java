@@ -43,6 +43,9 @@ import java.util.Set;
  */
 public class FastThreadLocal<V> {
 
+    //注意是静态的，所以所有的ThreadLocal都会用同一个index=0来存放要remove的值
+    //但是不同thread的thread local map不同
+    //会存放所有thread local map中初始化的对象,不过存放的是ThreadLocal对象，这样就可以保证回调函数的执行
     private static final int variablesToRemoveIndex = InternalThreadLocalMap.nextVariableIndex();
 
     /**
@@ -94,6 +97,10 @@ public class FastThreadLocal<V> {
         InternalThreadLocalMap.destroy();
     }
 
+    /**
+     * 每个ThreadLocal会分配2个index，第一个存放variablesToRemove set，用于remove
+     * 第二个存放具体的ThreadLocal
+     */
     @SuppressWarnings("unchecked")
     private static void addToVariablesToRemove(InternalThreadLocalMap threadLocalMap, FastThreadLocal<?> variable) {
         Object v = threadLocalMap.indexedVariable(variablesToRemoveIndex);
@@ -124,12 +131,14 @@ public class FastThreadLocal<V> {
 
     private final int index;
 
+    //在map中分配一个index
     public FastThreadLocal() {
         index = InternalThreadLocalMap.nextVariableIndex();
     }
 
     /**
      * Returns the current value for the current thread
+     * 第一次获得的时候需要初始化
      */
     @SuppressWarnings("unchecked")
     public final V get() {
@@ -252,6 +261,7 @@ public class FastThreadLocal<V> {
         Object v = threadLocalMap.removeIndexedVariable(index);
         removeFromVariablesToRemove(threadLocalMap, this);
 
+        //处理回调函数
         if (v != InternalThreadLocalMap.UNSET) {
             try {
                 onRemoval((V) v);

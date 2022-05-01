@@ -66,6 +66,7 @@ public abstract class Recycler<T> {
         }
 
         DEFAULT_MAX_CAPACITY_PER_THREAD = maxCapacityPerThread;
+        //用于初始化mpsc queue
         DEFAULT_QUEUE_CHUNK_SIZE_PER_THREAD = SystemPropertyUtil.getInt("io.netty.recycler.chunkSize", 32);
 
         // By default we allow one push to a Recycler for each 8th try on handles that were never recycled before.
@@ -99,6 +100,7 @@ public abstract class Recycler<T> {
             return new LocalPool<T>(maxCapacityPerThread, interval, chunkSize);
         }
 
+        //清空threadlocal的时候清空pool
         @Override
         protected void onRemoval(LocalPool<T> value) throws Exception {
             super.onRemoval(value);
@@ -161,6 +163,7 @@ public abstract class Recycler<T> {
 
     @SuppressWarnings("unchecked")
     public final T get() {
+        //最大也只能0，即不pool
         if (maxCapacityPerThread == 0) {
             return newObject((Handle<T>) NOOP_HANDLE);
         }
@@ -173,9 +176,11 @@ public abstract class Recycler<T> {
                 obj = newObject(handle);
                 handle.set(obj);
             } else {
+                //不pool
                 obj = newObject((Handle<T>) NOOP_HANDLE);
             }
         } else {
+            //pooled
             obj = handle.get();
         }
 
@@ -207,6 +212,9 @@ public abstract class Recycler<T> {
     private static final class DefaultHandle<T> implements Handle<T> {
         private static final int STATE_CLAIMED = 0;
         private static final int STATE_AVAILABLE = 1;
+        /**
+         * 这个handle的状态，available为包装对象可用；claim为不可用
+         */
         private static final AtomicIntegerFieldUpdater<DefaultHandle<?>> STATE_UPDATER;
         static {
             AtomicIntegerFieldUpdater<?> updater = AtomicIntegerFieldUpdater.newUpdater(DefaultHandle.class, "state");
@@ -239,6 +247,7 @@ public abstract class Recycler<T> {
             this.value = value;
         }
 
+        //变为不可用
         boolean availableToClaim() {
             if (state != STATE_AVAILABLE) {
                 return false;
@@ -246,6 +255,7 @@ public abstract class Recycler<T> {
             return STATE_UPDATER.compareAndSet(this, STATE_AVAILABLE, STATE_CLAIMED);
         }
 
+        //变为可用
         void toAvailable() {
             int prev = STATE_UPDATER.getAndSet(this, STATE_AVAILABLE);
             if (prev == STATE_AVAILABLE) {
@@ -270,18 +280,22 @@ public abstract class Recycler<T> {
             ratioCounter = ratioInterval; // Start at interval so the first one will be recycled.
         }
 
+        //从队列中取出DefaultHandle对象
         DefaultHandle<T> claim() {
             MessagePassingQueue<DefaultHandle<T>> handles = pooledHandles;
             if (handles == null) {
                 return null;
             }
             DefaultHandle<T> handle;
+            //不断尝试，直到获取到可用的对象为止；或者队列为空，获取的对象为null
+            //availableToClaim为true即状态转换为claim成功
             do {
                 handle = handles.relaxedPoll();
             } while (handle != null && !handle.availableToClaim());
             return handle;
         }
 
+        //添加到队列里
         void release(DefaultHandle<T> handle) {
             MessagePassingQueue<DefaultHandle<T>> handles = pooledHandles;
             handle.toAvailable();
@@ -290,6 +304,8 @@ public abstract class Recycler<T> {
             }
         }
 
+        //创建一个空handle
+        //ratioInterval决定创建多少个对象才有一个被pool
         DefaultHandle<T> newHandle() {
             if (++ratioCounter >= ratioInterval) {
                 ratioCounter = 0;

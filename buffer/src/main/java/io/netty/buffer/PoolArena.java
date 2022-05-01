@@ -90,6 +90,7 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
         }
 
         //注意下面的usage范围有重叠
+        // 因为有一个list q000的范围是1-50，所以当chunk完全空了之后（usage=0），就无法存放到任何list中了，此时就释放这个chunk
         q100 = new PoolChunkList<T>(this, null, 100, Integer.MAX_VALUE, chunkSize);
         q075 = new PoolChunkList<T>(this, q100, 75, 100, chunkSize);
         q050 = new PoolChunkList<T>(this, q075, 50, 100, chunkSize);
@@ -268,6 +269,7 @@ abstract class PoolArena<T> extends SizeClasses implements PoolArenaMetric {
             destroyChunk = !chunk.parent.free(chunk, handle, normCapacity, nioBuffer);
         }
         //当在list中因为free向前移动但是为null的时候，会直接destory
+        // 因为有一个list的范围是1-，所以当chunk完全空了之后，就无法存放到任何list中了，此时就释放这个chunk
         if (destroyChunk) {
             // destroyChunk not need to be called while holding the synchronized lock.
             destroyChunk(chunk);

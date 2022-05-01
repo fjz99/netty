@@ -44,6 +44,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
             new ThreadLocal<InternalThreadLocalMap>();
     private static final AtomicInteger nextIndex = new AtomicInteger();
 
+    //可以看出本质上是一个array list，初始大小为8
     private static final int DEFAULT_ARRAY_LIST_INITIAL_CAPACITY = 8;
     private static final int ARRAY_LIST_CAPACITY_EXPAND_THRESHOLD = 1 << 30;
     // Reference: https://hg.openjdk.java.net/jdk8/jdk8/jdk/file/tip/src/share/classes/java/util/ArrayList.java#l229
@@ -53,6 +54,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
     private static final int HANDLER_SHARABLE_CACHE_INITIAL_CAPACITY = 4;
     private static final int INDEXED_VARIABLE_TABLE_INITIAL_SIZE = 32;
 
+    //表示未初始化
     public static final Object UNSET = new Object();
 
     /** Used by {@link FastThreadLocal} */
@@ -123,6 +125,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         return ret;
     }
 
+    //删除map
     public static void remove() {
         Thread thread = Thread.currentThread();
         if (thread instanceof FastThreadLocalThread) {
@@ -136,6 +139,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         slowThreadLocalMap.remove();
     }
 
+    //获得下个index
     public static int nextVariableIndex() {
         int index = nextIndex.getAndIncrement();
         if (index >= ARRAY_LIST_CAPACITY_MAX_SIZE || index < 0) {
@@ -159,6 +163,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         return array;
     }
 
+    //获得当前线程关联了多少thread local变量
     public int size() {
         int count = 0;
 
@@ -196,6 +201,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
             count ++;
         }
 
+        //线程内部的，自然都是这个线程的
         for (Object o: indexedVariables) {
             if (o != UNSET) {
                 count ++;
@@ -240,11 +246,12 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         return arrayList(DEFAULT_ARRAY_LIST_INITIAL_CAPACITY);
     }
 
+    //暂时没用到
     @SuppressWarnings("unchecked")
     public <E> ArrayList<E> arrayList(int minCapacity) {
         ArrayList<E> list = (ArrayList<E>) arrayList;
         if (list == null) {
-            arrayList = new ArrayList<Object>(minCapacity);
+            arrayList = new ArrayList<> (minCapacity);
             return (ArrayList<E>) arrayList;
         }
         list.clear();
@@ -331,6 +338,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         }
     }
 
+    //和array list很像
     private void expandIndexedVariableTableAndSet(int index, Object value) {
         Object[] oldArray = indexedVariables;
         final int oldCapacity = oldArray.length;
