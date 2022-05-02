@@ -30,6 +30,7 @@ final class FastThreadLocalRunnable implements Runnable {
             runnable.run();
         } finally {
             //清除所有资源
+            //注意这是包装了runnable，所以removeAll调用的时候线程还没被GC
             FastThreadLocal.removeAll();
         }
     }

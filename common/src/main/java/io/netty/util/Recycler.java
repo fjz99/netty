@@ -224,7 +224,7 @@ public abstract class Recycler<T> {
 
         @SuppressWarnings({"FieldMayBeFinal", "unused"}) // Updated by STATE_UPDATER.
         private volatile int state; // State is initialised to STATE_CLAIMED (aka. 0) so they can be released.
-        private final LocalPool<T> localPool;
+        private final LocalPool<T> localPool; //handle本身会存储对应的queue，这样可以跨线程recycle
         private T value;
 
         DefaultHandle(LocalPool<T> localPool) {
