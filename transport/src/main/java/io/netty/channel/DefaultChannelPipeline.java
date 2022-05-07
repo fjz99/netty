@@ -201,13 +201,15 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         synchronized (this) {
             checkMultiplicity(handler);
 
-            newCtx = newContext(group, filterName(name, handler), handler);
+            newCtx = newContext(group, filterName(name, handler), handler);//!
 
+            //因为是addLast才添加到tail
             addLast0(newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventLoop yet.
             // In this case we add the context to the pipeline and add a task that will call
             // ChannelHandler.handlerAdded(...) once the channel is registered.
+            //如果channel已经注册，那就直接添加，否则就必须添加到链表中，等待后续register监听器执行前调用
             if (!registered) {
                 newCtx.setAddPending();
                 callHandlerCallbackLater(newCtx, true);
@@ -220,10 +222,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                 return this;
             }
         }
+        //在loop内，直接调用
         callHandlerAdded0(newCtx);
         return this;
     }
 
+    //插到tail前面。。
     private void addLast0(AbstractChannelHandlerContext newCtx) {
         AbstractChannelHandlerContext prev = tail.prev;
         newCtx.prev = prev;
@@ -1126,6 +1130,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             pendingHandlerCallbackHead = task;
         } else {
             // Find the tail of the linked-list.
+            //添加到链表最后
             while (pending.next != null) {
                 pending = pending.next;
             }
@@ -1459,6 +1464,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         @Override
         void execute() {
             EventExecutor executor = ctx.executor();
+            //根据是否在event loop中
             if (executor.inEventLoop()) {
                 callHandlerAdded0(ctx);
             } else {

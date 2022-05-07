@@ -226,7 +226,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
      * Be aware that this method will throw an {@link UnsupportedOperationException} if the task queue, which was
      * created via {@link #newTaskQueue()}, does not implement {@link BlockingQueue}.
      * </p>
-     *
+     * 查看周期任务，如果没有，那就阻塞获取taskqueue的task，此时可能阻塞，就牵扯到了WAKE UP TASK
+     * 如果有周期任务，那就带超时地获取taskqueue的task，如果获取不到，那就把所有可以执行的周期任务转移到taskqueu中，然后take一下
      * @return {@code null} if the executor thread has been interrupted or waken up.
      */
     protected Runnable takeTask() {
@@ -241,7 +242,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             if (scheduledTask == null) {
                 Runnable task = null;
                 try {
-                    task = taskQueue.take();
+                    task = taskQueue.take();//阻塞获取
                     if (task == WAKEUP_TASK) {
                         task = null;
                     }
@@ -276,6 +277,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
     }
 
+    //只是获得一个周期任务，然后尝试加到task queue中，注意task queue有大小限制，默认16
     private boolean fetchFromScheduledTaskQueue() {
         if (scheduledTaskQueue == null || scheduledTaskQueue.isEmpty()) {
             return true;
@@ -338,6 +340,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     /**
      * Add a task to the task queue, or throws a {@link RejectedExecutionException} if this instance was shutdown
      * before.
+     * 如果队列满了也会reject
      */
     protected void addTask(Runnable task) {
         ObjectUtil.checkNotNull(task, "task");
@@ -362,7 +365,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     /**
      * Poll all tasks from the task queue and run them via {@link Runnable#run()} method.
-     *
+     * 执行所有的（能执行的）周期任务和task queue中的任务
      * @return {@code true} if and only if at least one task was run
      */
     protected boolean runAllTasks() {
@@ -380,7 +383,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         if (ranAtLeastOne) {
             lastExecutionTime = ScheduledFutureTask.nanoTime();
         }
-        afterRunningAllTasks();
+        afterRunningAllTasks();//扩展方法
         return ranAtLeastOne;
     }
 
@@ -454,9 +457,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     /**
      * Poll all tasks from the task queue and run them via {@link Runnable#run()} method.  This method stops running
      * the tasks in the task queue and returns if it ran longer than {@code timeoutNanos}.
+     * 有超时时间地执行所有能执行的任务，超时时间64个任务检查一次，或者没有任务可以执行为止
+     * timeout=0的话，就只会最多运行64个任务
      */
     protected boolean runAllTasks(long timeoutNanos) {
-        fetchFromScheduledTaskQueue();
+        fetchFromScheduledTaskQueue();//转移一堆
         Runnable task = pollTask();
         if (task == null) {
             afterRunningAllTasks();
@@ -546,7 +551,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         // NOOP
     }
 
+    /**
+     * 给队列中添加一个任务，添加失败也没事，目的是保证队列中有任务
+     */
     protected void wakeup(boolean inEventLoop) {
+        //如果在线程中，那就没必要wakeup，这本来就是wakeup的
         if (!inEventLoop) {
             // Use offer as we actually only need this to unblock the thread and if offer fails we do not care as there
             // is already something in the queue.
@@ -662,6 +671,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             return terminationFuture;
         }
 
+        //因为wakeup能重写。。所以要保证加上WAKEUP_TASK
         if (wakeup) {
             taskQueue.offer(WAKEUP_TASK);
             if (!addTaskWakesUp) {
@@ -992,6 +1002,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+                    //执行具体的run
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {

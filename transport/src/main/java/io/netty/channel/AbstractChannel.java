@@ -476,6 +476,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             AbstractChannel.this.eventLoop = eventLoop;
 
+            //保证在loop线程内执行，会触发监听器
             if (eventLoop.inEventLoop()) {
                 register0(promise);
             } else {
@@ -512,6 +513,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
                 pipeline.invokeHandlerAddedIfNeeded();
+                //触发handler added回调监听器
+                //ChannelInitializer就借助这个监听器
 
                 safeSetSuccess(promise);
                 pipeline.fireChannelRegistered();
@@ -525,7 +528,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         // again so that we process inbound data.
                         //
                         // See https://github.com/netty/netty/issues/4805
-                        beginRead();
+                        beginRead();//注册对应的事件，server是accept，client是read
                     }
                 }
             } catch (Throwable t) {

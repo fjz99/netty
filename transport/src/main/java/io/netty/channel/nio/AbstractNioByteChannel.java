@@ -141,6 +141,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             final ChannelPipeline pipeline = pipeline();
             final ByteBufAllocator allocator = config.getAllocator();
             final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
+//            recvBufAllocHandle其实就是用于处理配置的，比如配置了一次最多读多少。。
             allocHandle.reset(config);
 
             ByteBuf byteBuf = null;
@@ -148,7 +149,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             try {
                 do {
                     byteBuf = allocHandle.allocate(allocator);
-                    allocHandle.lastBytesRead(doReadBytes(byteBuf));
+                    allocHandle.lastBytesRead(doReadBytes(byteBuf));//allocHandle控制了一次最多读多少字节
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
                         byteBuf.release();
@@ -161,11 +162,11 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                         break;
                     }
 
-                    allocHandle.incMessagesRead(1);
+                    allocHandle.incMessagesRead(1);//增加1
                     readPending = false;
                     pipeline.fireChannelRead(byteBuf);
                     byteBuf = null;
-                } while (allocHandle.continueReading());
+                } while (allocHandle.continueReading());//即判断消息数是否超过
 
                 allocHandle.readComplete();
                 pipeline.fireChannelReadComplete();
@@ -221,9 +222,11 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             }
 
             final int localFlushedAmount = doWriteBytes(buf);
+            //localFlushedAmount为写了多少
             if (localFlushedAmount > 0) {
                 in.progress(localFlushedAmount);
                 if (!buf.isReadable()) {
+                    //写完了
                     in.remove();
                 }
                 return 1;
@@ -247,6 +250,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             // Should not reach here.
             throw new Error();
         }
+        //写缓冲区满了
         return WRITE_STATUS_SNDBUF_FULL;
     }
 
@@ -264,6 +268,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             writeSpinCount -= doWriteInternal(in, msg);
         } while (writeSpinCount > 0);
 
+        //<0即触发了write buffer满
         incompleteWrite(writeSpinCount < 0);
     }
 

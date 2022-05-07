@@ -213,6 +213,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             @Override
             public Object run() {
                 try {
+                    //通过反射创建关联
                     Field selectedKeysField = selectorImplClass.getDeclaredField("selectedKeys");
                     Field publicSelectedKeysField = selectorImplClass.getDeclaredField("publicSelectedKeys");
 
@@ -245,9 +246,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     selectedKeysField.set(unwrappedSelector, selectedKeySet);
                     publicSelectedKeysField.set(unwrappedSelector, selectedKeySet);
                     return null;
-                } catch (NoSuchFieldException e) {
-                    return e;
-                } catch (IllegalAccessException e) {
+                } catch (NoSuchFieldException | IllegalAccessException e) {
                     return e;
                 }
             }
@@ -456,6 +455,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         }
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
+                            //有task的情况下不执行select，先执行task
                             if (!hasTasks()) {
                                 strategy = select(curDeadlineNanos);
                             }
@@ -481,6 +481,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 needsToSelectAgain = false;
                 final int ioRatio = this.ioRatio;
                 boolean ranTasks;
+//                ioRatio表示执行IO事件所占CPU时间百分比，默认50，
+//                ioTime * (100 - ioRatio) / ioRatio，通过ioTime，ioRatio计算处理任务的CPU时间。
                 if (ioRatio == 100) {
                     try {
                         if (strategy > 0) {
@@ -700,6 +702,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             int readyOps = k.readyOps();
             // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwise
             // the NIO JDK channel implementation may throw a NotYetConnectedException.
+            //注意这里是connect事件
             if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
                 // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
                 // See https://github.com/netty/netty/issues/924
@@ -781,8 +784,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
     }
 
+    //在线程内肯定wakeup了
     @Override
     protected void wakeup(boolean inEventLoop) {
+        //nextWakeupNanos可以避免不必要的wake up
         if (!inEventLoop && nextWakeupNanos.getAndSet(AWAKE) != AWAKE) {
             selector.wakeup();
         }

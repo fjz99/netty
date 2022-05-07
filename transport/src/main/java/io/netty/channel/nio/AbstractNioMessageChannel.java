@@ -59,6 +59,7 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
         return allocHandle.continueReading();
     }
 
+    //只处理accept事件
     private final class NioMessageUnsafe extends AbstractNioUnsafe {
 
         private final List<Object> readBuf = new ArrayList<Object>();
@@ -70,12 +71,13 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
             final ChannelPipeline pipeline = pipeline();
             final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
             allocHandle.reset(config);
-
+//            recvBufAllocHandle其实就是用于处理配置的，比如配置了一次最多读多少。。
             boolean closed = false;
             Throwable exception = null;
             try {
                 try {
                     do {
+                        //是一个NioSocketChannel
                         int localRead = doReadMessages(readBuf);
                         if (localRead == 0) {
                             break;
@@ -96,10 +98,11 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                     readPending = false;
                     pipeline.fireChannelRead(readBuf.get(i));
                 }
+                //Server自动添加一个处理Acceptor的handler，在init时添加的
                 readBuf.clear();
                 allocHandle.readComplete();
                 pipeline.fireChannelReadComplete();
-
+                //!!
                 if (exception != null) {
                     closed = closeOnReadError(exception);
 
