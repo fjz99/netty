@@ -191,6 +191,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
             final EventLoop eventLoop = channel.eventLoop();
             AddressResolver<SocketAddress> resolver;
             try {
+                //获得地址解析器，即解析域名
                 resolver = this.resolver.getResolver(eventLoop);
             } catch (Throwable cause) {
                 channel.close();
@@ -205,6 +206,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
 
             final Future<SocketAddress> resolveFuture = resolver.resolve(remoteAddress);
 
+            //判断是否resolve完成了，此时进行下一个
             if (resolveFuture.isDone()) {
                 final Throwable resolveFailureCause = resolveFuture.cause();
 
