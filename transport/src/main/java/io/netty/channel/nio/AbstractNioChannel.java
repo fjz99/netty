@@ -245,13 +245,16 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 }
 
                 boolean wasActive = isActive();
+                //查看是阻塞连接还是非阻塞连接
                 if (doConnect(remoteAddress, localAddress)) {
+                    //此方法会触发channel 的active事件！，如果是非阻塞的连接，那就会在CONNECT事件完成后触发
                     fulfillConnectPromise(promise, wasActive);
                 } else {
                     connectPromise = promise;
                     requestedRemoteAddress = remoteAddress;
 
                     // Schedule connect timeout.
+                    //非阻塞连接就添加一个基于超时时间的延时任务，超时就close
                     int connectTimeoutMillis = config().getConnectTimeoutMillis();
                     if (connectTimeoutMillis > 0) {
                         connectTimeoutFuture = eventLoop().schedule(new Runnable() {
@@ -267,6 +270,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                         }, connectTimeoutMillis, TimeUnit.MILLISECONDS);
                     }
 
+                    //操作完成后，如果发现任务被取消了，就close channel
                     promise.addListener(new ChannelFutureListener() {
                         @Override
                         public void operationComplete(ChannelFuture future) throws Exception {

@@ -569,6 +569,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            //也会触发active，active会注册accept事件
             if (!wasActive && isActive()) {
                 invokeLater(new Runnable() {
                     @Override

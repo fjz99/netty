@@ -1402,7 +1402,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         public void channelActive(ChannelHandlerContext ctx) {
             ctx.fireChannelActive();
 
-            readIfIsAutoRead();
+            readIfIsAutoRead();//！
         }
 
         @Override
@@ -1422,6 +1422,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             readIfIsAutoRead();
         }
 
+        //触发自动读
         private void readIfIsAutoRead() {
             if (channel.config().isAutoRead()) {
                 channel.read();
