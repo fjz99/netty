@@ -385,15 +385,19 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         }
     }
 
+    //直接从context触发
     @Override
     public ChannelHandlerContext fireChannelReadComplete() {
+        //找到下一个有效的，然后触发
         invokeChannelReadComplete(findContextInbound(MASK_CHANNEL_READ_COMPLETE));
         return this;
     }
 
+    //保证线程安全
     static void invokeChannelReadComplete(final AbstractChannelHandlerContext next) {
         EventExecutor executor = next.executor();
         if (executor.inEventLoop()) {
+            //内部直接执行
             next.invokeChannelReadComplete();
         } else {
             Tasks tasks = next.invokeTasks;
@@ -405,13 +409,15 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     private void invokeChannelReadComplete() {
-        if (invokeHandler()) {
+        if (invokeHandler()) {//判断当前的handler是否已经执行了channel added回调
             try {
                 ((ChannelInboundHandler) handler()).channelReadComplete(this);
+                //handler内部用户自己fire下一个
             } catch (Throwable t) {
                 invokeExceptionCaught(t);
             }
         } else {
+            //fire下一个
             fireChannelReadComplete();
         }
     }

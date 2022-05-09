@@ -143,6 +143,8 @@ public abstract class DefaultMaxMessagesRecvByteBufAllocator implements MaxMessa
             return continueReading(defaultMaybeMoreSupplier);
         }
 
+        //默认一直读的条件： maybeMoreDataSupplier.get()即上次读取的字节数读满了
+        //totalMessages < maxMessagePerRead即计数器没有溢出
         @Override
         public boolean continueReading(UncheckedBooleanSupplier maybeMoreDataSupplier) {
             return config.isAutoRead() &&

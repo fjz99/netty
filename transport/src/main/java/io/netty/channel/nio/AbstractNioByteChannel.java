@@ -166,7 +166,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                     readPending = false;
                     pipeline.fireChannelRead(byteBuf);
                     byteBuf = null;
-                } while (allocHandle.continueReading());//即判断消息数是否超过
+                } while (allocHandle.continueReading());
+                //默认一直读的条件：maybeMoreDataSupplier.get()即上次读取的字节数读满了
+                //totalMessages<maxMessagePerRead即计数器没有溢出
 
                 allocHandle.readComplete();
                 pipeline.fireChannelReadComplete();

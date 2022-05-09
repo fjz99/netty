@@ -924,6 +924,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return this;
     }
 
+    //从head为起点，触发read complete事件
     @Override
     public final ChannelPipeline fireChannelReadComplete() {
         AbstractChannelHandlerContext.invokeChannelReadComplete(head);
@@ -1364,6 +1365,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void read(ChannelHandlerContext ctx) {
+            //注意是begin read！
             unsafe.beginRead();
         }
 

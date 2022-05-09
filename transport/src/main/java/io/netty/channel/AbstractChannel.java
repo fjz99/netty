@@ -847,6 +847,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        //基于ChannelOutboundBuffer
         @Override
         public final void write(Object msg, ChannelPromise promise) {
             assertEventLoop();
@@ -869,8 +870,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             int size;
             try {
-                msg = filterOutboundMessage(msg);
-                size = pipeline.estimatorHandle().size(msg);
+                msg = filterOutboundMessage(msg);//扩展口，对写的消息进行改动，比如变成direct buffer
+                size = pipeline.estimatorHandle().size(msg);//获得写的大小字节数
                 if (size < 0) {
                     size = 0;
                 }
