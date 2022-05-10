@@ -123,9 +123,12 @@ public class FlushConsolidationHandler extends ChannelDuplexHandler {
         if (readInProgress) {
             // If there is still a read in progress we are sure we will see a channelReadComplete(...) call. Thus
             // we only need to flush if we reach the explicitFlushAfterFlushes limit.
+            //如果正在read，那就会拦截flush，只有256次flush才会执行一次
+            //会自动放到read complete去执行
             if (++flushPendingCount == explicitFlushAfterFlushes) {
                 flushNow(ctx);
             }
+            //consolidateWhenNoReadInProgress是一个配置，保证只要是read loop就会拦截，并添加一个调度任务
         } else if (consolidateWhenNoReadInProgress) {
             // Flush immediately if we reach the threshold, otherwise schedule
             if (++flushPendingCount == explicitFlushAfterFlushes) {
