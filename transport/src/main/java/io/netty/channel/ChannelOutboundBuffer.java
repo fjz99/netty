@@ -467,7 +467,7 @@ public final class ChannelOutboundBuffer {
                     } else {
                         // The code exists in an extra method to ensure the method is not too big to inline as this
                         // branch is not very likely to get hit very frequently.
-                        // 指令流水线
+                        // 指令流水线,cnt=0的情况也在这个else分支
                         nioBufferCount = nioBuffers(entry, buf, nioBuffers, nioBufferCount, maxCount);
                     }
                     if (nioBufferCount >= maxCount) {
@@ -803,6 +803,7 @@ public final class ChannelOutboundBuffer {
         } while (isFlushedEntry(entry));
     }
 
+    //注意一次可能flush不完，导致unflushedEntry！=null
     private boolean isFlushedEntry(Entry e) {
         return e != null && e != unflushedEntry;
     }

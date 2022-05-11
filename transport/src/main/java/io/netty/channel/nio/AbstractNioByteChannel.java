@@ -148,7 +148,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             boolean close = false;
             try {
                 do {
-                    byteBuf = allocHandle.allocate(allocator);
+                    byteBuf = allocHandle.allocate(allocator);//直接分配就行，反正有对象池和内存池
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));//allocHandle控制了一次最多读多少字节
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
@@ -305,6 +305,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             clearOpWrite();
 
             // Schedule flush again later so other tasks can be picked up in the meantime
+            // 注意这是flush0方法，不会addFlush()！
             eventLoop().execute(flushTask);
         }
     }

@@ -361,6 +361,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
 
         final int elemSize = arena.sizeIdx2size(sizeIdx);
 
+        //pageSize=8192,注意还是根据8192来计算的
         //find lowest common multiple of pageSize and elemSize
         //保证结果是pagesize的整数倍，也是对应的subpage中elemSize（即subpage的规格）的整数倍
         //然后尽量小

@@ -390,6 +390,7 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
         int writeSpinCount = config().getWriteSpinCount();
         do {
             if (in.isEmpty()) {
+                //没有数据则清除关注事件OP_WRITE
                 // All written so clear OP_WRITE
                 clearOpWrite();
                 // Directly return here so incompleteWrite(...) is not called.
@@ -406,6 +407,7 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
             switch (nioBufferCnt) {
                 case 0:
                     // We have something else beside ByteBuffers to write so fallback to normal writes.
+                    // 没有byte buffer，但是可能有别的
                     writeSpinCount -= doWrite0(in);
                     break;
                 case 1: {
@@ -429,6 +431,7 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
                     // to check if the total size of all the buffers is non-zero.
                     // We limit the max amount to int above so cast is safe
                     long attemptedBytes = in.nioBufferSize();
+                    //一次写一堆，底层实现不是for循环一个一个写，所以才区分这个
                     final long localWrittenBytes = ch.write(nioBuffers, 0, nioBufferCnt);
                     if (localWrittenBytes <= 0) {
                         incompleteWrite(true);

@@ -166,6 +166,7 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
 
     protected abstract ByteBuffer newInternalNioBuffer(T memory);
 
+    //当release到ref cnt=0的时候会调用
     @Override
     protected final void deallocate() {
         if (handle >= 0) {
@@ -173,10 +174,10 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
             this.handle = -1;
             memory = null;
             chunk.decrementPinnedMemory(maxLength);
-            chunk.arena.free(chunk, tmpNioBuf, handle, maxLength, cache);
+            chunk.arena.free(chunk, tmpNioBuf, handle, maxLength, cache);//内存池
             tmpNioBuf = null;
             chunk = null;
-            recycle();
+            recycle();//对象池
         }
     }
 
