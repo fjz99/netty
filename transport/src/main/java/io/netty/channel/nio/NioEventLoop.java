@@ -456,6 +456,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
                             //有task的情况下不执行select，先执行task
+                            //假如task queue有task，那就不select，保证task可以执行
                             if (!hasTasks()) {
                                 strategy = select(curDeadlineNanos);
                             }
@@ -756,7 +757,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     private void closeAll() {
-        selectAgain();
+        selectAgain();//selector.selectNow();
         Set<SelectionKey> keys = selector.keys();
         Collection<AbstractNioChannel> channels = new ArrayList<AbstractNioChannel>(keys.size());
         for (SelectionKey k: keys) {
@@ -771,6 +772,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
         }
 
+        //关闭channel，此时会触发unregister事件和inactive事件
         for (AbstractNioChannel ch: channels) {
             ch.unsafe().close(ch.unsafe().voidPromise());
         }

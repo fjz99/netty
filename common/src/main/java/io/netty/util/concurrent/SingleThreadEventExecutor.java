@@ -603,6 +603,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
     private boolean runShutdownHooks() {
         boolean ran = false;
         // Note shutdown hooks can add / remove shutdown hooks.
+        //把新添加的shutdown hook也执行完
         while (!shutdownHooks.isEmpty()) {
             List<Runnable> copy = new ArrayList<Runnable>(shutdownHooks);
             shutdownHooks.clear();
@@ -633,6 +634,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
         ObjectUtil.checkNotNull(unit, "unit");
 
+        //已经调用一次shutdown了
         if (isShuttingDown()) {
             return terminationFuture();
         }
@@ -660,6 +662,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                         wakeup = false;
                 }
             }
+            //防止并发冲突，目的是给state=ST_SHUTTING_DOWN，如果已经是了，那就说明并发冲突了，就不改了
             if (STATE_UPDATER.compareAndSet(this, oldState, newState)) {
                 break;
             }
@@ -752,6 +755,8 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     /**
      * Confirm that the shutdown if the instance should be done now!
+     * 判断是否是shutdown，如果是，那就进行一些close操作
+     * 这个方法可能会执行多次
      */
     protected boolean confirmShutdown() {
         if (!isShuttingDown()) {
@@ -764,10 +769,12 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
         cancelScheduledTasks();
 
+        //只有第一次执行才会设置gracefulShutdownStartTime
         if (gracefulShutdownStartTime == 0) {
             gracefulShutdownStartTime = ScheduledFutureTask.nanoTime();
         }
 
+        //如果这两个有执行的
         if (runAllTasks() || runShutdownHooks()) {
             if (isShutdown()) {
                 // Executor shut down - no new tasks anymore.
@@ -780,20 +787,26 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             if (gracefulShutdownQuietPeriod == 0) {
                 return true;
             }
+
+            //注意这里，这样可以保证即使task queue没任务了也会不select，即保证不会在select处阻塞
+            //其实loop中也会调用runtasks，再加上调用closeAll就会关闭很多东西，所以不会出现一直add任务然后一直执行不完的情况，除非用户自己搞
             taskQueue.offer(WAKEUP_TASK);
             return false;
         }
 
         final long nanoTime = ScheduledFutureTask.nanoTime();
 
+        //如果超时了或关闭了
         if (isShutdown() || nanoTime - gracefulShutdownStartTime > gracefulShutdownTimeout) {
             return true;
         }
 
+        //如果距离上次执行的时间差值小于静默时间（默认2s），那就等待100ms，并且不算shutdown（返回false）
         if (nanoTime - lastExecutionTime <= gracefulShutdownQuietPeriod) {
             // Check if any tasks were added to the queue every 100ms.
             // TODO: Change the behavior of takeTask() so that it returns on timeout.
             taskQueue.offer(WAKEUP_TASK);
+            //保证不会在selector中阻塞
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
