@@ -102,7 +102,8 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 readBuf.clear();
                 allocHandle.readComplete();
                 pipeline.fireChannelReadComplete();
-                //!!
+                //可以看出，如果fireExceptionCaught的时候又发生了异常，那么会throw出去
+                //可以看出，只会处理read的时候的一样，fire的异常不处理
                 if (exception != null) {
                     closed = closeOnReadError(exception);
 

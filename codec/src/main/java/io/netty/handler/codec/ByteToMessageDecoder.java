@@ -273,6 +273,9 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
             selfFiredChannelRead = true;
             CodecOutputList out = CodecOutputList.newInstance();
             try {
+                //关键在于cumulator
+                //既然外部不会累计ByteBuf，那就必须Handler自己累积
+                //所以这个类有一个累加器，用于把没处理完的ByteBuf进行累加，累加可以借助于CompositeByteBuf或者直接copy
                 first = cumulation == null;
                 cumulation = cumulator.cumulate(ctx.alloc(),
                         first ? Unpooled.EMPTY_BUFFER : cumulation, (ByteBuf) msg);
@@ -431,6 +434,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
             while (in.isReadable()) {
                 final int outSize = out.size();
 
+                //将decode到的数据传给后面的handler
                 if (outSize > 0) {
                     fireChannelRead(ctx, out, outSize);
                     out.clear();
@@ -446,7 +450,7 @@ public abstract class ByteToMessageDecoder extends ChannelInboundHandlerAdapter 
                 }
 
                 int oldInputLength = in.readableBytes();
-                decodeRemovalReentryProtection(ctx, in, out);
+                decodeRemovalReentryProtection(ctx, in, out);//!!
 
                 // Check if this handler was removed before continuing the loop.
                 // If it was removed, it is not safe to continue to operate on the buffer.

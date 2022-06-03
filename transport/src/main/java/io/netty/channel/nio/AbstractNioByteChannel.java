@@ -177,6 +177,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                     closeOnRead(pipeline);
                 }
             } catch (Throwable t) {
+                //可以看出这个异常是都处理了，不论是readComplete，还是fireRead，只要发生了异常都会处理
                 handleReadException(pipeline, byteBuf, t, close, allocHandle);
             } finally {
                 // Check if there is a readPending which was not processed yet.
