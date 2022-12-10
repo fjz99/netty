@@ -212,6 +212,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             //如果channel已经注册，那就直接添加，否则就必须添加到链表中，等待后续register监听器执行前调用
             if (!registered) {
                 newCtx.setAddPending();
+                //只有add和remove才会pending
                 callHandlerCallbackLater(newCtx, true);
                 return this;
             }
@@ -223,6 +224,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
             }
         }
         //在loop内，直接调用
+        //注意，这个不会触发pipeline，只是触发了对应的那个handler的回调
         callHandlerAdded0(newCtx);
         return this;
     }

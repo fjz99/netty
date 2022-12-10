@@ -243,6 +243,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
         insertAvailRun0(runOffset, handle);
         if (pages > 1) {
             //insert last page of run
+            //插入最后一个，方便合并run
             insertAvailRun0(lastPage(runOffset, pages), handle);
         }
     }
@@ -259,7 +260,7 @@ final class PoolChunk<T> implements PoolChunkMetric {
     }
 
     private void removeAvailRun(LongPriorityQueue queue, long handle) {
-        queue.remove(handle);
+        queue.remove(handle);// !!
 
         int runOffset = runOffset(handle);
         int pages = runPages(handle);
