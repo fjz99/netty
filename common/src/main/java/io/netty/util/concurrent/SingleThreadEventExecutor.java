@@ -277,7 +277,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
     }
 
-    //只是获得一个周期任务，然后尝试加到task queue中，注意task queue有大小限制，默认16
+    //获得可以执行的延时任务，然后尝试加到task queue中，注意task queue有大小限制，默认16
     private boolean fetchFromScheduledTaskQueue() {
         if (scheduledTaskQueue == null || scheduledTaskQueue.isEmpty()) {
             return true;
@@ -874,6 +874,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             }
         }
 
+        // 每次execute都会唤醒，开销很大，所以channel的wake up才有一个awake标志位
         if (!addTaskWakesUp && immediate) {
             wakeup(inEventLoop);
         }
@@ -970,6 +971,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void startThread() {
         if (state == ST_NOT_STARTED) {
+            //cas!
             if (STATE_UPDATER.compareAndSet(this, ST_NOT_STARTED, ST_STARTED)) {
                 boolean success = false;
                 try {

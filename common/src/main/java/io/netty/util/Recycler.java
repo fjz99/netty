@@ -171,7 +171,7 @@ public abstract class Recycler<T> {
         DefaultHandle<T> handle = localPool.claim();
         T obj;
         if (handle == null) {
-            handle = localPool.newHandle();
+            handle = localPool.newHandle();//决定了每隔几个对象再缓存
             if (handle != null) {
                 obj = newObject(handle);
                 handle.set(obj);

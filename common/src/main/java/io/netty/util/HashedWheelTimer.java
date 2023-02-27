@@ -541,7 +541,7 @@ public class HashedWheelTimer implements Timer {
             for (int i = 0; i < 100000; i++) {
                 HashedWheelTimeout timeout = timeouts.poll();
                 if (timeout == null) {
-                    // all processed
+                    // all processed，即队列是空的
                     break;
                 }
                 if (timeout.state() == HashedWheelTimeout.ST_CANCELLED) {
@@ -565,10 +565,11 @@ public class HashedWheelTimer implements Timer {
             for (;;) {
                 HashedWheelTimeout timeout = cancelledTimeouts.poll();
                 if (timeout == null) {
-                    // all processed
+                    // all processed，队列是空的
                     break;
                 }
                 try {
+                    // 移除链表中的timeout
                     timeout.remove();
                 } catch (Throwable t) {
                     if (logger.isWarnEnabled()) {

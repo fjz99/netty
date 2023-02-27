@@ -49,6 +49,7 @@ public class FastThreadLocal<V> {
     private static final int variablesToRemoveIndex = InternalThreadLocalMap.nextVariableIndex();
 
     /**
+     * ！！！
      * Removes all {@link FastThreadLocal} variables bound to the current thread.  This operation is useful when you
      * are in a container environment, and you don't want to leave the thread local variables in the threads you do not
      * manage.

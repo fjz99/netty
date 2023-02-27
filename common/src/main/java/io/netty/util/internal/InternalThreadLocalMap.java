@@ -140,6 +140,7 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
     }
 
     //获得下个index
+    //可以看出，每个fast thread local都会独占一个index，即使那个线程的tthread local没有get过
     public static int nextVariableIndex() {
         int index = nextIndex.getAndIncrement();
         if (index >= ARRAY_LIST_CAPACITY_MAX_SIZE || index < 0) {
