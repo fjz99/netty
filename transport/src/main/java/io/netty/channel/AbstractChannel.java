@@ -520,7 +520,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
-                // 有可能已经active了才注册的
+                // 有可能已经active了才注册的，比如对于server来说，acceptor得到子channel的时候，子channel就已经active了
+                // 这里是为了保证active回调一定会触发
                 if (isActive()) {
                     if (firstRegistration) {
                         pipeline.fireChannelActive();
