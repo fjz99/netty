@@ -528,8 +528,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             } finally {
                 // Always handle shutdown even if the loop processing threw an exception.
                 try {
+                    // 处理关闭
                     if (isShuttingDown()) {
-                        closeAll();
+                        closeAll();//先关闭外部事件
                         if (confirmShutdown()) {
                             return;
                         }

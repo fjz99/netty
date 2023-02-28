@@ -767,7 +767,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             throw new IllegalStateException("must be invoked from an event loop");
         }
 
-        cancelScheduledTasks();
+        cancelScheduledTasks(); //撤销所有周期任务，否则任务永远也执行不完
 
         //只有第一次执行才会设置gracefulShutdownStartTime
         if (gracefulShutdownStartTime == 0) {
@@ -775,6 +775,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         //如果这两个有执行的
+        //因为这里处理的是内部的任务，所以要尽可能都执行
         if (runAllTasks() || runShutdownHooks()) {
             if (isShutdown()) {
                 // Executor shut down - no new tasks anymore.
@@ -802,6 +803,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         //如果距离上次执行的时间差值小于静默时间（默认2s），那就等待100ms，并且不算shutdown（返回false）
+        //即，静默时间有3个参数，开始时间、超时时间（最多延迟多久关闭）、Period（表示在period时间内没有新任务产生的话，就关闭）
         if (nanoTime - lastExecutionTime <= gracefulShutdownQuietPeriod) {
             // Check if any tasks were added to the queue every 100ms.
             // TODO: Change the behavior of takeTask() so that it returns on timeout.
@@ -1044,6 +1046,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                         // Run all remaining tasks and shutdown hooks. At this point the event loop
                         // is in ST_SHUTTING_DOWN state still accepting tasks which is needed for
                         // graceful shutdown with quietPeriod.
+                        // 只要confirmShutdown是false就一直执行，保证一定最终关闭
                         for (;;) {
                             if (confirmShutdown()) {
                                 break;
@@ -1052,6 +1055,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
                         // Now we want to make sure no more tasks can be added from this point. This is
                         // achieved by switching the state. Any new tasks beyond this point will be rejected.
+                        // 设置状态，保证无法执行新的任务
                         for (;;) {
                             int oldState = state;
                             if (oldState >= ST_SHUTDOWN || STATE_UPDATER.compareAndSet(
@@ -1062,6 +1066,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
                         // We have the final set of tasks in the queue now, no more can be added, run all remaining.
                         // No need to loop here, this is the final pass.
+                        // 把最后剩下的一点任务执行完
                         confirmShutdown();
                     } finally {
                         try {
@@ -1073,6 +1078,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                             // See https://github.com/netty/netty/issues/6596.
                             FastThreadLocal.removeAll();
 
+                            // 设置状态为已经彻底关闭
                             STATE_UPDATER.set(SingleThreadEventExecutor.this, ST_TERMINATED);
                             threadLock.countDown();
                             int numUserTasks = drainTasks();
